@@ -1,0 +1,53 @@
+name: CI Python
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Variables globales del workflow principal.
+env:
+  APP_ENV: test
+  BUILD_PYTHON: "3.13"
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+
+    outputs:
+      app-env: ${{ steps.export.outputs.app-env }}
+      build-python: ${{ steps.export.outputs.build-python }}
+
+    steps:
+      - name: Exportar configuración global
+        id: export
+        run: |
+          echo "app-env=$APP_ENV" >> "$GITHUB_OUTPUT"
+          echo "build-python=$BUILD_PYTHON" >> "$GITHUB_OUTPUT"
+
+  tests:
+    needs: config
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    uses: ./.github/workflows/reusable-test.yml
+
+    with:
+      python-version: ${{ matrix.python-version }}
+      app-env: ${{ needs.config.outputs.app-env }}
+
+    secrets:
+      api-token: ${{ secrets.API_TOKEN }}
+
+  build:
+    needs: [config, tests]
+
+    uses: ./.github/workflows/build.yml
+
+    with:
+      python-version: ${{ needs.config.outputs.build-python }}
