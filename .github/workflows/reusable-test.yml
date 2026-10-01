@@ -1,0 +1,55 @@
+name: Tests reutilizables
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        required: true
+        type: string
+      app-env:
+        required: true
+        type: string
+    secrets:
+      api-token:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: ${{ inputs.app-env }}
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Instalar dependencias
+        run: python -m pip install -e . pytest
+
+      - name: Mostrar entorno
+        run: echo "Entorno de ejecución:$APP_ENV"
+
+      - name: Comprobar secret sin mostrarlo
+        env:
+          API_TOKEN: ${{ secrets.api-token }}
+        run: |
+          if [ -z "$API_TOKEN" ]; then
+            echo "Falta configurar el secret API_TOKEN"
+            exit 1
+          fi
+          echo "API_TOKEN está configurado. Su valor no se imprime."
+
+      - name: Ejecutar tests
+        env:
+          API_TOKEN: ${{ secrets.api-token }}
+        run: python -m pytest -v
